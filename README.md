@@ -15,6 +15,9 @@ It provides an infinitely scrolling, perfectly virtualized masonry grid, robust 
 - **100% Private Local Boards**: Uses `IndexedDB` to securely save and categorize your favorite pins locally on your device. Your boards are never uploaded to a cloud server.
 - **Intelligent Cache Persistence**: Features zero-second scroll restoration when using the back button by intelligently manipulating `sessionStorage` and browser `beforeunload` events.
 
+> **Note:** When using a public instance on [pinnyapp.vercel.app](https://pinnyapp.vercel.app) your address is proxied through our servers, however if you host the stack locally, your IP can be exposed to Pinterest servers.
+
+
 ## 🛠️ Tech Stack
 
 - **Framework**: Next.js 16 (App Router)
