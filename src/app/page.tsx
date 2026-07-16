@@ -16,7 +16,7 @@ export interface ImageObj {
   color?: string;
 }
 
-import { searchPinterest, getMixedPins } from '@/lib/pinterest';
+import { searchPinterest, getMixedPins, getMixedSearches } from '@/lib/pinterest';
 import { cookies } from 'next/headers';
 import MixedFeedLoader from '@/components/MixedFeedLoader';
 
@@ -72,7 +72,7 @@ export default async function Home({
   }
 
   let query = q || 'aesthetic wallpapers';
-  let mode: 'search' | 'related' | 'mixed' = 'search';
+  let mode: 'search' | 'related' | 'mixed' | 'mixed_search' = 'search';
 
   let images: ImageObj[] = [];
   let initialBookmark: string | null = null;
@@ -96,15 +96,21 @@ export default async function Home({
     // Fallback to text search if related pins failed or user explicitly searched
     if (images.length === 0) {
       if (!hasExplicitQuery && historyTitles.length > 0) {
-        query = historyTitles.slice(0, 5).join(' '); // prevent massive query
+        const topTitles = historyTitles.slice(0, 10);
+        query = topTitles.join(',');
+        mode = 'mixed_search';
+        const data = await getMixedSearches(topTitles);
+        if (data.images) images = data.images;
+        if (data.bookmarks) initialBookmark = data.bookmarks.join(',');
+        if (data.csrftoken) initialCsrfToken = data.csrftoken;
       } else {
         query = q || 'aesthetic wallpapers';
+        mode = 'search';
+        const data = await searchPinterest(query);
+        if (data.images) images = data.images;
+        if (data.bookmark) initialBookmark = data.bookmark;
+        if (data.csrftoken) initialCsrfToken = data.csrftoken;
       }
-      mode = 'search';
-      const data = await searchPinterest(query);
-      if (data.images) images = data.images;
-      if (data.bookmark) initialBookmark = data.bookmark;
-      if (data.csrftoken) initialCsrfToken = data.csrftoken;
     }
   } catch (error) {
     console.error("Failed to fetch images from Pinterest:", error);

@@ -10,7 +10,7 @@ export interface ImageGridProps {
   query: string;
   cachePrefix?: string;
   cacheKeyOverride?: string;
-  mode?: 'search' | 'related' | 'mixed';
+  mode?: 'search' | 'related' | 'mixed' | 'mixed_search';
   disableCache?: boolean;
 }
 
@@ -113,6 +113,9 @@ export default function ImageGrid({ initialImages, initialBookmark, initialCsrfT
         fetchUrl = `${baseUrl}&bookmark=${encodeURIComponent(bookmark)}`;
       } else if (activeMode === 'mixed') {
         baseUrl = `/api/mixed?ids=${encodeURIComponent(activeQuery)}`;
+        fetchUrl = `${baseUrl}&bookmarks=${encodeURIComponent(bookmark)}`;
+      } else if (activeMode === 'mixed_search') {
+        baseUrl = `/api/mixed_search?queries=${encodeURIComponent(activeQuery)}`;
         fetchUrl = `${baseUrl}&bookmarks=${encodeURIComponent(bookmark)}`;
       } else {
         fetchUrl = `${baseUrl}&bookmark=${encodeURIComponent(bookmark)}`;

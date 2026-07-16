@@ -20,14 +20,13 @@ export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOve
   const [bookmarks, setBookmarks] = useState<(string | null)[]>([]);
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
-  const [fallbackQuery, setFallbackQuery] = useState<string | null>(null);
+  const [isFallbackMode, setIsFallbackMode] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
     let gatheredImages: ImageObj[] = [];
     let gatheredBookmarks: (string | null)[] = [];
     let token: string | null = null;
-    let activeFetches = historyIds.length;
     let finished = false;
 
     // 1. Check cache first to avoid re-fetching on back navigation
@@ -36,7 +35,6 @@ export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOve
       if (cached) {
         const parsed = JSON.parse(cached);
         if (parsed.images && parsed.images.length > 0) {
-          // Instantly restore!
           setImages(parsed.images);
           setBookmarks(parsed.bookmarks ? parsed.bookmarks.split(',') : []);
           setCsrfToken(parsed.csrfToken || null);
@@ -46,24 +44,22 @@ export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOve
       }
       
       // Check fallback cache
-      let fallback = 'aesthetic wallpapers';
-      if (historyTitles && historyTitles.length > 0) {
-        fallback = historyTitles.slice(0, 5).join(' ');
-      }
-      const fallbackCacheKey = `pinny_fallback_${fallback}`;
+      let fallbackTitles = historyTitles && historyTitles.length > 0 ? historyTitles.slice(0, 10) : ['aesthetic wallpapers'];
+      const fallbackCacheKey = `pinny_fallback_${fallbackTitles.join(',')}`;
       const fallbackCached = sessionStorage.getItem(fallbackCacheKey);
       if (fallbackCached) {
         const parsed = JSON.parse(fallbackCached);
         if (parsed.images && parsed.images.length > 0) {
-          // Instantly switch to fallback grid, which will restore from its own cache!
-          setFallbackQuery(fallback);
+          setImages(parsed.images);
+          setBookmarks(parsed.bookmarks ? parsed.bookmarks.split(',') : []);
+          setCsrfToken(parsed.csrfToken || null);
+          setIsFallbackMode(true);
           setLoading(false);
           return;
         }
       }
     } catch (e) {}
 
-    // 2. Fetch in the background with staggered delays
     const finalize = () => {
       if (finished || !isMounted) return;
       finished = true;
@@ -74,19 +70,7 @@ export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOve
         [gatheredImages[i], gatheredImages[j]] = [gatheredImages[j], gatheredImages[i]];
       }
 
-      // Detect if Pinterest blocked the API (returned empty data on all requests)
-      if (gatheredImages.length === 0) {
-        let fallback = 'aesthetic wallpapers';
-        if (historyTitles && historyTitles.length > 0) {
-          fallback = historyTitles.slice(0, 5).join(' '); // prevent massive query
-        }
-        console.log(`%c[Pinny] Related API blocked (Data: []). Falling back to search mode with query: "${fallback}"`, 'color: #ff4d4d; font-weight: bold;');
-        setFallbackQuery(fallback);
-        setLoading(false);
-        return;
-      }
-
-      console.log(`%c[Pinny] Successfully blended ${gatheredImages.length} related pins!`, 'color: #4CAF50; font-weight: bold;');
+      console.log(`%c[Pinny] Successfully blended ${gatheredImages.length} pins!`, 'color: #4CAF50; font-weight: bold;');
 
       setImages(gatheredImages);
       setBookmarks(gatheredBookmarks);
@@ -100,34 +84,92 @@ export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOve
     }, 10000);
 
     let completed = 0;
+    let fallbackTitles = historyTitles && historyTitles.length > 0 ? historyTitles.slice(0, 10) : ['aesthetic wallpapers'];
+    let relatedBlockedDetected = false;
+    let activeFetches = historyIds.length;
+
+    const startSearchFallback = () => {
+      console.log("%c[Pinny] Shadowban detected. Switching to parallel search fallback!", "color: #ff4d4d; font-weight: bold;");
+      setIsFallbackMode(true);
+      gatheredImages = [];
+      gatheredBookmarks = [];
+      completed = 0;
+      setProgress(0);
+      
+      activeFetches = fallbackTitles.length;
+      fallbackTitles.forEach((title) => {
+        const delay = Math.random() * 2500;
+        setTimeout(async () => {
+          if (!isMounted || finished) return;
+          try {
+            console.log(`%c[Pinny API] Client fetching search fallback: /api/search?q=${title}`, 'color: #3b82f6;');
+            const res = await fetch(`/api/search?q=${encodeURIComponent(title)}`);
+            if (res.ok) {
+              const data = await res.json();
+              if (data.images) gatheredImages.push(...data.images);
+              gatheredBookmarks.push(data.bookmark || null);
+              if (data.csrftoken) token = data.csrftoken;
+            } else {
+              gatheredBookmarks.push(null);
+            }
+          } catch (e) {
+            gatheredBookmarks.push(null);
+          } finally {
+            activeFetches--;
+            completed++;
+            setProgress(Math.round((completed / fallbackTitles.length) * 100));
+            if (activeFetches === 0) {
+              clearTimeout(timeoutId);
+              finalize();
+            }
+          }
+        }, delay);
+      });
+    };
 
     historyIds.forEach((id) => {
       const delay = Math.random() * 2500; // Stagger up to 2.5 seconds
       
       setTimeout(async () => {
-        if (!isMounted || finished) return;
+        if (!isMounted || finished || relatedBlockedDetected) return;
 
         try {
           console.log(`%c[Pinny API] Client fetching: /api/related?id=${id}`, 'color: #3b82f6;');
           const res = await fetch(`/api/related?id=${id}`);
           if (res.ok) {
             const data = await res.json();
-            if (data.images) gatheredImages.push(...data.images);
-            gatheredBookmarks.push(data.bookmark || null);
-            if (data.csrftoken) token = data.csrftoken;
+            if (data.images && data.images.length > 0) {
+              gatheredImages.push(...data.images);
+              gatheredBookmarks.push(data.bookmark || null);
+              if (data.csrftoken) token = data.csrftoken;
+            } else {
+              // Ban detected
+              relatedBlockedDetected = true;
+              startSearchFallback();
+              return;
+            }
           } else {
-            gatheredBookmarks.push(null);
+            relatedBlockedDetected = true;
+            startSearchFallback();
+            return;
           }
         } catch (e) {
-          gatheredBookmarks.push(null);
+          // Error, let's just trigger fallback to be safe
+          if (!relatedBlockedDetected) {
+            relatedBlockedDetected = true;
+            startSearchFallback();
+            return;
+          }
         } finally {
-          activeFetches--;
-          completed++;
-          setProgress(Math.round((completed / historyIds.length) * 100));
+          if (!relatedBlockedDetected) {
+            activeFetches--;
+            completed++;
+            setProgress(Math.round((completed / historyIds.length) * 100));
 
-          if (activeFetches === 0) {
-            clearTimeout(timeoutId);
-            finalize();
+            if (activeFetches === 0) {
+              clearTimeout(timeoutId);
+              finalize();
+            }
           }
         }
       }, delay);
@@ -177,28 +219,18 @@ export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOve
     );
   }
 
-  if (fallbackQuery) {
-    return (
-      <ImageGrid
-        key={`fallback_${fallbackQuery}`}
-        initialImages={[]}
-        initialBookmark={null}
-        query={fallbackQuery}
-        mode="search"
-        cachePrefix="pinny_fallback"
-      />
-    );
-  }
+  let finalMode = isFallbackMode ? "mixed_search" : "mixed";
+  let finalQuery = isFallbackMode ? (historyTitles && historyTitles.length > 0 ? historyTitles.slice(0, 10).join(',') : 'aesthetic wallpapers') : query;
 
   return (
     <ImageGrid
-      key={query}
+      key={finalQuery}
       initialImages={images}
       initialBookmark={bookmarks.length > 0 ? bookmarks.join(',') : null}
       initialCsrfToken={csrfToken}
-      query={query}
-      mode="mixed"
-      cachePrefix={cachePrefix}
+      query={finalQuery}
+      mode={finalMode as any}
+      cachePrefix={isFallbackMode ? "pinny_fallback" : cachePrefix}
       cacheKeyOverride={cacheKeyOverride}
     />
   );

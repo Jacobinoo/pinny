@@ -265,3 +265,46 @@ export async function getMixedPins(pinIds: string[], bookmarks?: (string | null)
     csrftoken: latestCsrfToken
   };
 }
+
+export async function getMixedSearches(queries: string[], bookmarks?: (string | null)[], csrftoken?: string | null) {
+  const promises = queries.map(async (query, index) => {
+    const bookmark = bookmarks && bookmarks[index] !== 'null' ? bookmarks[index] : null;
+    if (bookmarks && bookmarks[index] === 'null') {
+       return { images: [], bookmark: null, csrftoken };
+    }
+    
+    // Add staggered delay to prevent rate limits on large batches
+    const delay = Math.random() * 1500;
+    await new Promise(r => setTimeout(r, delay));
+    
+    return searchPinterest(query, bookmark, csrftoken);
+  });
+
+  const results = await Promise.all(promises);
+
+  let allImages: any[] = [];
+  const nextBookmarks: (string | null)[] = [];
+  let latestCsrfToken = csrftoken;
+
+  results.forEach((res) => {
+    if (res.images) allImages = allImages.concat(res.images);
+    nextBookmarks.push(res.bookmark || 'null');
+    if (res.csrftoken) latestCsrfToken = res.csrftoken;
+  });
+
+  // Shuffle images
+  for (let i = allImages.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [allImages[i], allImages[j]] = [allImages[j], allImages[i]];
+  }
+
+  // If all bookmarks are 'null', we set the final bookmark array to null to stop infinite scrolling
+  const allNull = nextBookmarks.every(b => b === 'null');
+
+  return {
+    images: allImages,
+    bookmarks: allNull ? null : nextBookmarks,
+    csrftoken: latestCsrfToken
+  };
+}
+
