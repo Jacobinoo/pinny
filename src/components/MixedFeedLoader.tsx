@@ -1,0 +1,158 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import ImageGrid from './ImageGrid';
+import { ImageObj } from '@/app/page';
+
+interface MixedFeedLoaderProps {
+  historyIds: string[];
+  cacheKeyOverride?: string;
+}
+
+export default function MixedFeedLoader({ historyIds, cacheKeyOverride }: MixedFeedLoaderProps) {
+  const query = historyIds.join(',');
+  const cachePrefix = 'pinny_grid';
+  const CACHE_KEY = cacheKeyOverride || `${cachePrefix}_${query}`;
+
+  const [loading, setLoading] = useState(true);
+  const [images, setImages] = useState<ImageObj[]>([]);
+  const [bookmarks, setBookmarks] = useState<(string | null)[]>([]);
+  const [csrfToken, setCsrfToken] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    let gatheredImages: ImageObj[] = [];
+    let gatheredBookmarks: (string | null)[] = [];
+    let token: string | null = null;
+    let activeFetches = historyIds.length;
+    let finished = false;
+
+    // 1. Check cache first to avoid re-fetching on back navigation
+    try {
+      const cached = sessionStorage.getItem(CACHE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed.images && parsed.images.length > 0) {
+          // Instantly restore!
+          setImages(parsed.images);
+          setBookmarks(parsed.bookmarks ? parsed.bookmarks.split(',') : []);
+          setCsrfToken(parsed.csrfToken || null);
+          setLoading(false);
+          return;
+        }
+      }
+    } catch (e) {}
+
+    // 2. Fetch in the background with staggered delays
+    const finalize = () => {
+      if (finished || !isMounted) return;
+      finished = true;
+
+      // Shuffle images
+      for (let i = gatheredImages.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [gatheredImages[i], gatheredImages[j]] = [gatheredImages[j], gatheredImages[i]];
+      }
+
+      setImages(gatheredImages);
+      setBookmarks(gatheredBookmarks);
+      setCsrfToken(token);
+      setLoading(false);
+    };
+
+    const timeoutId = setTimeout(() => {
+      console.log("MixedFeedLoader: 10 second timeout reached, finalizing early.");
+      finalize();
+    }, 10000);
+
+    let completed = 0;
+
+    historyIds.forEach((id) => {
+      const delay = Math.random() * 2500; // Stagger up to 2.5 seconds
+      
+      setTimeout(async () => {
+        if (!isMounted || finished) return;
+
+        try {
+          const res = await fetch(`/api/related?id=${id}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.images) gatheredImages.push(...data.images);
+            gatheredBookmarks.push(data.bookmark || null);
+            if (data.csrftoken) token = data.csrftoken;
+          } else {
+            gatheredBookmarks.push(null);
+          }
+        } catch (e) {
+          gatheredBookmarks.push(null);
+        } finally {
+          activeFetches--;
+          completed++;
+          setProgress(Math.round((completed / historyIds.length) * 100));
+
+          if (activeFetches === 0) {
+            clearTimeout(timeoutId);
+            finalize();
+          }
+        }
+      }, delay);
+    });
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, [historyIds, CACHE_KEY]);
+
+  if (loading) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '60vh',
+        fontFamily: 'system-ui, -apple-system, sans-serif'
+      }}>
+        <div style={{
+          width: '50px',
+          height: '50px',
+          border: '4px solid var(--border)',
+          borderTop: '4px solid var(--pinterest-red)',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite',
+          marginBottom: '2rem'
+        }} />
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>
+          Refining recommendations...
+        </h2>
+        <p style={{ color: 'var(--text-secondary)' }}>
+          Blending your core interests into a personalized feed.
+        </p>
+        <div style={{ width: '200px', height: '4px', backgroundColor: 'var(--border)', borderRadius: '2px', marginTop: '2rem', overflow: 'hidden' }}>
+          <div style={{ width: `${progress}%`, height: '100%', backgroundColor: 'var(--pinterest-red)', transition: 'width 0.3s ease' }} />
+        </div>
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+        `}} />
+      </div>
+    );
+  }
+
+  return (
+    <ImageGrid
+      key={query}
+      initialImages={images}
+      initialBookmark={bookmarks.length > 0 ? bookmarks.join(',') : null}
+      initialCsrfToken={csrfToken}
+      query={query}
+      mode="mixed"
+      cachePrefix={cachePrefix}
+      cacheKeyOverride={cacheKeyOverride}
+    />
+  );
+}

@@ -1,36 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Pinny
 
-## Getting Started
+Pinny is a beautiful, fully functional visual discovery engine built with **Next.js 16**, designed to showcase advanced front-end architecture, API proxying, and performance optimization. 
 
-First, run the development server:
+It provides an infinitely scrolling, perfectly virtualized masonry grid, robust recommendation blending, and a completely private local-board saving system.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## 🌟 Key Features
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+- **Next.js 16 App Router**: Leverages the latest React paradigms and Turbopack for lightning-fast builds.
+- **Masonry UI Virtualization**: Implements a highly optimized, infinitely scrolling grid that dynamically measures and batches images to prevent DOM bloat.
+- **Complex Recommendation Engine**: Seamlessly blends multiple history interests into a unified, privacy-friendly home feed.
+- **Progressive Web App (PWA)**: Fully installable on iOS and Android devices with a native app feel and offline fallback capabilities.
+- **100% Private Local Boards**: Uses `IndexedDB` to securely save and categorize your favorite pins locally on your device. Your boards are never uploaded to a cloud server.
+- **Intelligent Cache Persistence**: Features zero-second scroll restoration when using the back button by intelligently manipulating `sessionStorage` and browser `beforeunload` events.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 🛠️ Tech Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+- **Framework**: Next.js 16 (App Router)
+- **Styling**: Vanilla CSS for maximum performance and fluid dynamic layouts
+- **Storage**: IndexedDB (for Boards) & Session Storage (for caching)
+- **Backend APIs**: Next.js Serverless API Routes (CORS proxying)
 
-## Learn More
+## ⚖️ License & Disclaimers
 
-To learn more about Next.js, take a look at the following resources:
+### GNU General Public License v3.0
+This project utilizes backend proxying concepts and data structures heavily inspired by [Binternet](https://github.com/Ahwxorg/Binternet), which is licensed under the **GNU General Public License v3.0**. In compliance with the GPLv3 copyleft terms, Pinny is also released under the GNU General Public License v3.0.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Disclaimer
+> **Disclaimer:** This is a non-commercial, educational portfolio project. It is not affiliated with, endorsed by, or connected to Pinterest. It was built strictly to demonstrate advanced full-stack engineering, API proxying, and UI virtualization.
+> 
+> Pinny does not host any content. All content shown on this application is sourced from Pinterest™. Pinterest is a registered trademark of Pinterest Inc. Pinny is not affiliated with Pinterest Inc. Any issues with content shown on any Pinny instances need to be reported to Pinterest, not the instance host's internet provider or domain provider.
