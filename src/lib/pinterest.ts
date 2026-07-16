@@ -25,18 +25,18 @@ export async function searchPinterest(query: string, bookmark?: string | null, c
     headers["x-csrftoken"] = csrftoken;
     cookieStr += `csrftoken=${csrftoken}; `;
   }
-  
+
   // Inject session cookie if provided in environment variables to bypass datacenter IP blocks
   if (process.env.PINTEREST_SESSION_COOKIE) {
     cookieStr += `_pinterest_sess=${process.env.PINTEREST_SESSION_COOKIE}; `;
   }
-  
+
   if (cookieStr) {
     headers["cookie"] = cookieStr;
   }
 
   const fetchUrl = bookmark ? url : `${url}?data=${dataParam}`;
-  
+
   const fetchOptions: RequestInit = {
     method: bookmark ? 'POST' : 'GET',
     headers: headers,
@@ -50,11 +50,11 @@ export async function searchPinterest(query: string, bookmark?: string | null, c
 
   try {
     const res = await fetch(fetchUrl, fetchOptions);
-    
+
     if (!res.ok) {
       console.error(`Pinterest Search API returned HTTP ${res.status}: ${res.statusText}`);
     }
-    
+
     const textData = await res.text();
     let data;
     try {
@@ -64,7 +64,7 @@ export async function searchPinterest(query: string, bookmark?: string | null, c
       console.error("Pinterest Search API returned non-JSON response:", textData.substring(0, 200) + "...");
       throw new Error("Invalid JSON from Pinterest");
     }
-    
+
     const setCookie = res.headers.get('set-cookie');
     let newCsrfToken = csrftoken;
     if (setCookie) {
@@ -89,6 +89,10 @@ export async function searchPinterest(query: string, bookmark?: string | null, c
 }
 
 export async function getRelatedPins(pinId: string, bookmark?: string | null, csrftoken?: string | null) {
+   // 🛑 SIMULATE SHADOWBAN 🛑
+   return { images: [], bookmark: null, csrftoken };
+
+
   const url = "https://www.pinterest.com/resource/RelatedPinFeedResource/get/";
 
   const dataParamObj: any = {
@@ -115,18 +119,18 @@ export async function getRelatedPins(pinId: string, bookmark?: string | null, cs
     headers["x-csrftoken"] = csrftoken;
     cookieStr += `csrftoken=${csrftoken}; `;
   }
-  
+
   // Inject session cookie if provided in environment variables to bypass datacenter IP blocks
   if (process.env.PINTEREST_SESSION_COOKIE) {
     cookieStr += `_pinterest_sess=${process.env.PINTEREST_SESSION_COOKIE}; `;
   }
-  
+
   if (cookieStr) {
     headers["cookie"] = cookieStr;
   }
 
   const fetchUrl = bookmark ? url : `${url}?data=${dataParam}`;
-  
+
   const fetchOptions: RequestInit = {
     method: bookmark ? 'POST' : 'GET',
     headers: headers,
@@ -140,11 +144,11 @@ export async function getRelatedPins(pinId: string, bookmark?: string | null, cs
 
   try {
     const res = await fetch(fetchUrl, fetchOptions);
-    
+
     if (!res.ok) {
       console.error(`Pinterest Related API returned HTTP ${res.status}: ${res.statusText}`);
     }
-    
+
     const textData = await res.text();
     let data;
     try {
@@ -154,7 +158,7 @@ export async function getRelatedPins(pinId: string, bookmark?: string | null, cs
       console.error("Pinterest Related API returned non-JSON response:", textData.substring(0, 200) + "...");
       throw new Error("Invalid JSON from Pinterest");
     }
-    
+
     const setCookie = res.headers.get('set-cookie');
     let newCsrfToken = csrftoken;
     if (setCookie) {
@@ -230,11 +234,11 @@ export async function getMixedPins(pinIds: string[], bookmarks?: (string | null)
     if (bookmarks && bookmarks[index] === 'null') {
        return { images: [], bookmark: null, csrftoken };
     }
-    
+
     // Add staggered delay to prevent rate limits on large batches (e.g. infinite scrolling 10 mixed feeds)
     const delay = Math.random() * 1500;
     await new Promise(r => setTimeout(r, delay));
-    
+
     return getRelatedPins(id, bookmark, csrftoken);
   });
 
@@ -272,11 +276,11 @@ export async function getMixedSearches(queries: string[], bookmarks?: (string | 
     if (bookmarks && bookmarks[index] === 'null') {
        return { images: [], bookmark: null, csrftoken };
     }
-    
+
     // Add staggered delay to prevent rate limits on large batches
     const delay = Math.random() * 1500;
     await new Promise(r => setTimeout(r, delay));
-    
+
     return searchPinterest(query, bookmark, csrftoken);
   });
 
@@ -307,4 +311,3 @@ export async function getMixedSearches(queries: string[], bookmarks?: (string | 
     csrftoken: latestCsrfToken
   };
 }
-
