@@ -40,7 +40,19 @@ export async function searchPinterest(query: string, bookmark?: string | null, c
 
   try {
     const res = await fetch(fetchUrl, fetchOptions);
-    const data = await res.json();
+    
+    if (!res.ok) {
+      console.error(`Pinterest Search API returned HTTP ${res.status}: ${res.statusText}`);
+    }
+    
+    const textData = await res.text();
+    let data;
+    try {
+      data = JSON.parse(textData);
+    } catch (e) {
+      console.error("Pinterest Search API returned non-JSON response:", textData.substring(0, 200) + "...");
+      throw new Error("Invalid JSON from Pinterest");
+    }
     
     const setCookie = res.headers.get('set-cookie');
     let newCsrfToken = csrftoken;
@@ -107,7 +119,19 @@ export async function getRelatedPins(pinId: string, bookmark?: string | null, cs
 
   try {
     const res = await fetch(fetchUrl, fetchOptions);
-    const data = await res.json();
+    
+    if (!res.ok) {
+      console.error(`Pinterest Related API returned HTTP ${res.status}: ${res.statusText}`);
+    }
+    
+    const textData = await res.text();
+    let data;
+    try {
+      data = JSON.parse(textData);
+    } catch (e) {
+      console.error("Pinterest Related API returned non-JSON response:", textData.substring(0, 200) + "...");
+      throw new Error("Invalid JSON from Pinterest");
+    }
     
     const setCookie = res.headers.get('set-cookie');
     let newCsrfToken = csrftoken;
@@ -142,6 +166,13 @@ function parsePinterestResponse(data: any): { images: any[], bookmark?: string }
   } else if (data?.resource_response?.data && Array.isArray(data.resource_response.data)) {
     // RelatedPinFeedResource returns array of pins directly
     results = data.resource_response.data;
+  } else {
+    // Log if Pinterest returns a valid JSON structure, but without the expected data
+    if (data?.resource_response?.error) {
+       console.warn("Pinterest API returned an error inside JSON:", data.resource_response.error);
+    } else {
+       console.warn("Pinterest API returned JSON but no image results were found. Structure:", JSON.stringify(data).substring(0, 150) + "...");
+    }
   }
 
   images = results.map((item: any) => {
