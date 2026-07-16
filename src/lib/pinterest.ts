@@ -20,9 +20,19 @@ export async function searchPinterest(query: string, bookmark?: string | null, c
     "Accept-Language": "en-US,en;q=0.9",
   };
 
+  let cookieStr = '';
   if (csrftoken) {
     headers["x-csrftoken"] = csrftoken;
-    headers["cookie"] = `csrftoken=${csrftoken}`;
+    cookieStr += `csrftoken=${csrftoken}; `;
+  }
+  
+  // Inject session cookie if provided in environment variables to bypass datacenter IP blocks
+  if (process.env.PINTEREST_SESSION_COOKIE) {
+    cookieStr += `_pinterest_sess=${process.env.PINTEREST_SESSION_COOKIE}; `;
+  }
+  
+  if (cookieStr) {
+    headers["cookie"] = cookieStr;
   }
 
   const fetchUrl = bookmark ? url : `${url}?data=${dataParam}`;
@@ -100,9 +110,19 @@ export async function getRelatedPins(pinId: string, bookmark?: string | null, cs
     "Accept-Language": "en-US,en;q=0.9",
   };
 
+  let cookieStr = '';
   if (csrftoken) {
     headers["x-csrftoken"] = csrftoken;
-    headers["cookie"] = `csrftoken=${csrftoken}`;
+    cookieStr += `csrftoken=${csrftoken}; `;
+  }
+  
+  // Inject session cookie if provided in environment variables to bypass datacenter IP blocks
+  if (process.env.PINTEREST_SESSION_COOKIE) {
+    cookieStr += `_pinterest_sess=${process.env.PINTEREST_SESSION_COOKIE}; `;
+  }
+  
+  if (cookieStr) {
+    headers["cookie"] = cookieStr;
   }
 
   const fetchUrl = bookmark ? url : `${url}?data=${dataParam}`;
