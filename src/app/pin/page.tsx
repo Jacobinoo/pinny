@@ -46,21 +46,27 @@ export default async function PinPage({
   let initialBookmark: string | null = null;
   let initialCsrfToken: string | null = null;
   let searchQuery = '';
+  let fetchMode: "search" | "related" = id ? "related" : "search";
   
   try {
     if (id) {
       const data = await getRelatedPins(id);
-      if (data.images) moreImages = data.images;
-      if (data.bookmark) initialBookmark = data.bookmark;
-      if (data.csrftoken) initialCsrfToken = data.csrftoken;
-      searchQuery = id;
-    } else {
-      // Fallback to text search if no ID was provided in the URL
+      if (data.images && data.images.length > 0) {
+        moreImages = data.images;
+        if (data.bookmark) initialBookmark = data.bookmark;
+        if (data.csrftoken) initialCsrfToken = data.csrftoken;
+        searchQuery = id;
+      }
+    }
+    
+    // Fallback if no ID provided OR if getRelatedPins returned empty (e.g. Vercel IP shadowban)
+    if (moreImages.length === 0) {
       let effectiveTitle = title;
       if (!effectiveTitle || effectiveTitle.toLowerCase() === 'untitled') {
         effectiveTitle = '';
       }
       searchQuery = effectiveTitle || description || 'aesthetic wallpapers';
+      fetchMode = "search";
       
       const data = await searchPinterest(searchQuery);
       if (data.images) moreImages = data.images;
@@ -127,7 +133,7 @@ export default async function PinPage({
                     initialCsrfToken={initialCsrfToken} 
                     query={searchQuery} 
                     cachePrefix="pinny_related"
-                    mode={id ? "related" : "search"}
+                    mode={fetchMode}
                   />
                 ) : (
                   <div style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>No related images found.</div>
