@@ -1,6 +1,6 @@
 # Pinny
 
-Pinny is a beautiful, fully functional visual discovery engine built with **Next.js 16**, designed to showcase advanced front-end architecture, API proxying, and performance optimization. 
+Pinny is a beautiful, open-source, **private frontend for Pinterest**. Built with **Next.js 16**, it is designed to showcase advanced front-end architecture, API proxying, and performance optimization.
 
 It provides an infinitely scrolling, perfectly virtualized masonry grid, robust recommendation blending, and a completely private local-board saving system.
 
@@ -21,6 +21,20 @@ It provides an infinitely scrolling, perfectly virtualized masonry grid, robust 
 - **Styling**: Vanilla CSS for maximum performance and fluid dynamic layouts
 - **Storage**: IndexedDB (for Boards) & Session Storage (for caching)
 - **Backend APIs**: Next.js Serverless API Routes (CORS proxying)
+
+## 🔒 Privacy & Networking Architecture
+
+Here is a breakdown of exactly how the networking behaves in different deployment scenarios:
+
+**When users access a public Vercel instance:**
+- The user's browser sends a request to the Vercel deployment.
+- Vercel's backend servers execute the application's API logic (such as fetching pins or proxying images) by making direct, server-to-server requests to Pinterest.
+- Because Vercel's infrastructure acts as the middleman, Pinterest only ever sees the IP address of the Vercel server making the request. This completely hides the end user's personal IP address.
+
+**When you host the stack locally (e.g., running `npm run dev` or `npm run start`):**
+- Your browser sends a request to your local Next.js server running on localhost.
+- Your local Node.js server executes the API logic and makes the requests to Pinterest.
+- Because the "server" making the request is physically running on your own computer, the IP address exposed to Pinterest is your home network's public IP address.
 
 ## ⚖️ License & Disclaimers
 
