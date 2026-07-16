@@ -49,6 +49,7 @@ export async function searchPinterest(query: string, bookmark?: string | null, c
     let data;
     try {
       data = JSON.parse(textData);
+      console.error("DEBUG SEARCH JSON RESPONSE:", JSON.stringify(data, null, 2));
     } catch (e) {
       console.error("Pinterest Search API returned non-JSON response:", textData.substring(0, 200) + "...");
       throw new Error("Invalid JSON from Pinterest");
@@ -128,6 +129,7 @@ export async function getRelatedPins(pinId: string, bookmark?: string | null, cs
     let data;
     try {
       data = JSON.parse(textData);
+      console.error("DEBUG RELATED JSON RESPONSE:", JSON.stringify(data, null, 2));
     } catch (e) {
       console.error("Pinterest Related API returned non-JSON response:", textData.substring(0, 200) + "...");
       throw new Error("Invalid JSON from Pinterest");
