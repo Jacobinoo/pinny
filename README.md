@@ -4,6 +4,8 @@ Pinny is a beautiful, fully functional visual discovery engine built with **Next
 
 It provides an infinitely scrolling, perfectly virtualized masonry grid, robust recommendation blending, and a completely private local-board saving system.
 
+
+
 ## 🌟 Key Features
 
 - **Next.js 16 App Router**: Leverages the latest React paradigms and Turbopack for lightning-fast builds.
