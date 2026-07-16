@@ -13,7 +13,7 @@ export async function searchPinterest(query: string, bookmark?: string | null, c
 
   const dataParam = encodeURIComponent(JSON.stringify(dataParamObj));
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     "x-pinterest-pws-handler": "www/search/[scope].js",
     "Accept": "application/json",
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -22,7 +22,7 @@ export async function searchPinterest(query: string, bookmark?: string | null, c
 
   let cookieStr = '';
   if (csrftoken) {
-    headers["x-csrftoken"] = csrftoken;
+    headers["x-csrftoken"] = csrftoken as string;
     cookieStr += `csrftoken=${csrftoken}; `;
   }
 
@@ -68,9 +68,10 @@ export async function searchPinterest(query: string, bookmark?: string | null, c
     const setCookie = res.headers.get('set-cookie');
     let newCsrfToken = csrftoken;
     if (setCookie) {
-      const match = setCookie.match(/csrftoken=([^;]+)/i);
-      if (match) {
-        newCsrfToken = match[1];
+      const match = (setCookie as string).match(/csrftoken=([^;]+)/i);
+      const token = match?.[1];
+      if (token) {
+        newCsrfToken = token;
       }
     }
 
@@ -107,7 +108,7 @@ export async function getRelatedPins(pinId: string, bookmark?: string | null, cs
 
   const dataParam = encodeURIComponent(JSON.stringify(dataParamObj));
 
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     "x-pinterest-pws-handler": "www/pin/[id].js",
     "Accept": "application/json",
     "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -116,7 +117,7 @@ export async function getRelatedPins(pinId: string, bookmark?: string | null, cs
 
   let cookieStr = '';
   if (csrftoken) {
-    headers["x-csrftoken"] = csrftoken;
+    headers["x-csrftoken"] = csrftoken as string;
     cookieStr += `csrftoken=${csrftoken}; `;
   }
 
@@ -162,9 +163,10 @@ export async function getRelatedPins(pinId: string, bookmark?: string | null, cs
     const setCookie = res.headers.get('set-cookie');
     let newCsrfToken = csrftoken;
     if (setCookie) {
-      const match = setCookie.match(/csrftoken=([^;]+)/i);
-      if (match) {
-        newCsrfToken = match[1];
+      const match = (setCookie as string).match(/csrftoken=([^;]+)/i);
+      const token = match?.[1];
+      if (token) {
+        newCsrfToken = token;
       }
     }
 
