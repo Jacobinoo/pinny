@@ -91,7 +91,7 @@ export async function searchPinterest(query: string, bookmark?: string | null, c
 
 export async function getRelatedPins(pinId: string, bookmark?: string | null, csrftoken?: string | null) {
    // 🛑 SIMULATE SHADOWBAN 🛑
-   return { images: [], bookmark: null, csrftoken };
+   // return { images: [], bookmark: null, csrftoken };
 
 
   const url = "https://www.pinterest.com/resource/RelatedPinFeedResource/get/";
