@@ -63,10 +63,13 @@ export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOve
         if (historyTitles && historyTitles.length > 0) {
           fallback = historyTitles.slice(0, 5).join(' '); // prevent massive query
         }
+        console.log(`%c[Pinny] Related API blocked (Data: []). Falling back to search mode with query: "${fallback}"`, 'color: #ff4d4d; font-weight: bold;');
         setFallbackQuery(fallback);
         setLoading(false);
         return;
       }
+
+      console.log(`%c[Pinny] Successfully blended ${gatheredImages.length} related pins!`, 'color: #4CAF50; font-weight: bold;');
 
       setImages(gatheredImages);
       setBookmarks(gatheredBookmarks);
@@ -88,6 +91,7 @@ export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOve
         if (!isMounted || finished) return;
 
         try {
+          console.log(`%c[Pinny API] Client fetching: /api/related?id=${id}`, 'color: #3b82f6;');
           const res = await fetch(`/api/related?id=${id}`);
           if (res.ok) {
             const data = await res.json();

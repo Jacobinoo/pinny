@@ -71,6 +71,7 @@ export default function ImageGrid({ initialImages, initialBookmark, initialCsrfT
 
   // Reset state if query changes! (Only if we are not overriding the cache key)
   useEffect(() => {
+    console.log(`%c[Pinny] Initializing ImageGrid. Mode: ${mode}, Query: "${query}"`, 'color: #8b5cf6; font-weight: bold;');
     if (cacheKeyOverride) return;
     
     if (!disableCache && typeof window !== 'undefined') {
@@ -121,6 +122,7 @@ export default function ImageGrid({ initialImages, initialBookmark, initialCsrfT
         fetchUrl += `&csrftoken=${encodeURIComponent(csrfToken)}`;
       }
       
+      console.log(`%c[Pinny API] Client fetching infinite scroll [Mode: ${activeMode}]: ${fetchUrl}`, 'color: #3b82f6;');
       const res = await fetch(fetchUrl);
       if (res.ok) {
         const data = await res.json();
@@ -345,6 +347,9 @@ export default function ImageGrid({ initialImages, initialBookmark, initialCsrfT
                     if (pinTitle.toLowerCase() === 'untitled') pinTitle = '';
                     
                     history = [{ id: imgObj.id, title: pinTitle }, ...history.filter((item: any) => item.id !== imgObj.id)].slice(0, 10);
+                    
+                    console.log('%c[Pinny] History Updated:', 'color: #f59e0b; font-weight: bold;', history);
+                    
                     document.cookie = `pinny_history=${encodeURIComponent(JSON.stringify(history))}; path=/; max-age=31536000`; // 1 year
                   } catch(e) {}
                 }
