@@ -334,11 +334,17 @@ export default function ImageGrid({ initialImages, initialBookmark, initialCsrfT
                 if (imgObj.id) {
                   try {
                     const cookieMatch = document.cookie.match(/(^|;)\s*pinny_history\s*=\s*([^;]+)/);
-                    let history = [];
+                    let history: any[] = [];
                     if (cookieMatch) {
-                      history = JSON.parse(decodeURIComponent(cookieMatch[2]));
+                      const parsed = JSON.parse(decodeURIComponent(cookieMatch[2]));
+                      // Migrate old string arrays to object arrays
+                      history = parsed.map((item: any) => typeof item === 'string' ? { id: item, title: '' } : item);
                     }
-                    history = [imgObj.id, ...history.filter((id: string) => id !== imgObj.id)].slice(0, 10);
+                    
+                    let pinTitle = imgObj.title || '';
+                    if (pinTitle.toLowerCase() === 'untitled') pinTitle = '';
+                    
+                    history = [{ id: imgObj.id, title: pinTitle }, ...history.filter((item: any) => item.id !== imgObj.id)].slice(0, 10);
                     document.cookie = `pinny_history=${encodeURIComponent(JSON.stringify(history))}; path=/; max-age=31536000`; // 1 year
                   } catch(e) {}
                 }

@@ -6,10 +6,11 @@ import { ImageObj } from '@/app/page';
 
 interface MixedFeedLoaderProps {
   historyIds: string[];
+  historyTitles?: string[];
   cacheKeyOverride?: string;
 }
 
-export default function MixedFeedLoader({ historyIds, cacheKeyOverride }: MixedFeedLoaderProps) {
+export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOverride }: MixedFeedLoaderProps) {
   const query = historyIds.join(',');
   const cachePrefix = 'pinny_grid';
   const CACHE_KEY = cacheKeyOverride || `${cachePrefix}_${query}`;
@@ -19,6 +20,7 @@ export default function MixedFeedLoader({ historyIds, cacheKeyOverride }: MixedF
   const [bookmarks, setBookmarks] = useState<(string | null)[]>([]);
   const [csrfToken, setCsrfToken] = useState<string | null>(null);
   const [progress, setProgress] = useState(0);
+  const [fallbackQuery, setFallbackQuery] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -53,6 +55,17 @@ export default function MixedFeedLoader({ historyIds, cacheKeyOverride }: MixedF
       for (let i = gatheredImages.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [gatheredImages[i], gatheredImages[j]] = [gatheredImages[j], gatheredImages[i]];
+      }
+
+      // Detect if Pinterest blocked the API (returned empty data on all requests)
+      if (gatheredImages.length === 0) {
+        let fallback = 'aesthetic wallpapers';
+        if (historyTitles && historyTitles.length > 0) {
+          fallback = historyTitles.slice(0, 5).join(' '); // prevent massive query
+        }
+        setFallbackQuery(fallback);
+        setLoading(false);
+        return;
       }
 
       setImages(gatheredImages);
@@ -140,6 +153,19 @@ export default function MixedFeedLoader({ historyIds, cacheKeyOverride }: MixedF
           }
         `}} />
       </div>
+    );
+  }
+
+  if (fallbackQuery) {
+    return (
+      <ImageGrid
+        key={`fallback_${fallbackQuery}`}
+        initialImages={[]}
+        initialBookmark={null}
+        query={fallbackQuery}
+        mode="search"
+        cachePrefix="pinny_fallback"
+      />
     );
   }
 

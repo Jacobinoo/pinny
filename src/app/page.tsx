@@ -29,12 +29,16 @@ export default async function Home({
   const cookieStore = await cookies();
   const historyCookie = cookieStore.get('pinny_history');
   
-  let historyIds: string[] = [];
+  let historyItems: {id: string, title: string}[] = [];
   if (historyCookie) {
     try {
-      historyIds = JSON.parse(decodeURIComponent(historyCookie.value));
+      const parsed = JSON.parse(decodeURIComponent(historyCookie.value));
+      historyItems = parsed.map((item: any) => typeof item === 'string' ? { id: item, title: '' } : item);
     } catch(e) {}
   }
+  
+  const historyIds = historyItems.map(item => item.id);
+  const historyTitles = historyItems.map(item => item.title).filter(t => t.trim().length > 0);
 
   const hasExplicitQuery = !!q;
 
@@ -61,7 +65,7 @@ export default async function Home({
       </header>
       <HorizontalBoards />
       <main className="main-content">
-        <MixedFeedLoader historyIds={historyIds.slice(0, 10)} cacheKeyOverride="pinny_grid_homepage" />
+        <MixedFeedLoader historyIds={historyIds.slice(0, 10)} historyTitles={historyTitles.slice(0, 10)} cacheKeyOverride="pinny_grid_homepage" />
         </main>
       </>
     );
@@ -91,7 +95,11 @@ export default async function Home({
     
     // Fallback to text search if related pins failed or user explicitly searched
     if (images.length === 0) {
-      query = q || 'aesthetic wallpapers';
+      if (!hasExplicitQuery && historyTitles.length > 0) {
+        query = historyTitles.slice(0, 5).join(' '); // prevent massive query
+      } else {
+        query = q || 'aesthetic wallpapers';
+      }
       mode = 'search';
       const data = await searchPinterest(query);
       if (data.images) images = data.images;
