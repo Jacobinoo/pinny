@@ -4,7 +4,7 @@ Pinny is a beautiful, fully functional visual discovery engine built with **Next
 
 It provides an infinitely scrolling, perfectly virtualized masonry grid, robust recommendation blending, and a completely private local-board saving system.
 
-![An image that shows the Pinny web app](https://pinnyapp.vercel.app/landing@1x.png)
+![An image that shows the Pinny web app](https://pinnyapp.vercel.app/landing@1x.jpeg)
 
 ## 🌟 Key Features
 
