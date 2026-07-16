@@ -304,7 +304,8 @@ export default function ImageGrid({ initialImages, initialBookmark, initialCsrfT
           if (!pos) return null; // Avoid render before calculation
           
           // Virtualization Check
-          if (pos.y + pos.height < viewportTop || pos.y > viewportBottom) {
+          const isVisible = pos.y + pos.height > scrollY - windowHeight * 4.0 && pos.y < scrollY + windowHeight * 5.0;
+          if (!isVisible) {
             return null; // Skip rendering DOM nodes outside of viewport
           }
 

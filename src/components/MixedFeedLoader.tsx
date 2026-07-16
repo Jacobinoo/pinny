@@ -44,6 +44,23 @@ export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOve
           return;
         }
       }
+      
+      // Check fallback cache
+      let fallback = 'aesthetic wallpapers';
+      if (historyTitles && historyTitles.length > 0) {
+        fallback = historyTitles.slice(0, 5).join(' ');
+      }
+      const fallbackCacheKey = `pinny_fallback_${fallback}`;
+      const fallbackCached = sessionStorage.getItem(fallbackCacheKey);
+      if (fallbackCached) {
+        const parsed = JSON.parse(fallbackCached);
+        if (parsed.images && parsed.images.length > 0) {
+          // Instantly switch to fallback grid, which will restore from its own cache!
+          setFallbackQuery(fallback);
+          setLoading(false);
+          return;
+        }
+      }
     } catch (e) {}
 
     // 2. Fetch in the background with staggered delays
