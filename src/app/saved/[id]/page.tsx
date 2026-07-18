@@ -72,6 +72,7 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
                 cacheKeyOverride={`pinny_grid_board_ideas_${board.id}_${board.pins.length}`} 
                 loaderType="spinner"
                 boardName={board.name}
+                suggestedBoardId={board.id}
               />
             </section>
           </div>

@@ -10,9 +10,10 @@ interface MixedFeedLoaderProps {
   cacheKeyOverride?: string;
   loaderType?: 'default' | 'spinner';
   boardName?: string;
+  suggestedBoardId?: string;
 }
 
-export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOverride, loaderType = 'default', boardName }: MixedFeedLoaderProps) {
+export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOverride, loaderType = 'default', boardName, suggestedBoardId }: MixedFeedLoaderProps) {
   const query = historyIds.join(',');
   const cachePrefix = 'pinny_grid';
   const CACHE_KEY = cacheKeyOverride || `${cachePrefix}_${query}`;
@@ -293,6 +294,7 @@ export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOve
       mode={finalMode as any}
       cachePrefix={isFallbackMode ? "pinny_fallback" : cachePrefix}
       cacheKeyOverride={cacheKeyOverride}
+      suggestedBoardId={suggestedBoardId}
     />
   );
 }

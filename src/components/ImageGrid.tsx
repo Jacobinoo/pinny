@@ -12,11 +12,13 @@ export interface ImageGridProps {
   cacheKeyOverride?: string;
   mode?: 'search' | 'related' | 'mixed' | 'mixed_search';
   disableCache?: boolean;
+  suggestedBoardId?: string;
 }
 
 import Link from 'next/link';
+import SaveToBoardButton from '@/components/SaveToBoardButton';
 
-export default function ImageGrid({ initialImages, initialBookmark, initialCsrfToken, query, cachePrefix = 'pinny_grid', cacheKeyOverride, mode = 'search', disableCache = false }: ImageGridProps) {
+export default function ImageGrid({ initialImages, initialBookmark, initialCsrfToken, query, cachePrefix = 'pinny_grid', cacheKeyOverride, mode = 'search', disableCache = false, suggestedBoardId }: ImageGridProps) {
   const CACHE_KEY = cacheKeyOverride || `${cachePrefix}_${query}`;
 
   const [activeQuery, setActiveQuery] = useState(query);
@@ -320,46 +322,9 @@ export default function ImageGrid({ initialImages, initialBookmark, initialCsrfT
           }
 
           return (
-            <Link 
-              href={`/pin?id=${encodeURIComponent(imgObj.id || '')}&url=${encodeURIComponent(imgObj.url)}&origUrl=${encodeURIComponent(imgObj.origUrl || imgObj.url)}&title=${encodeURIComponent(imgObj.title || '')}&description=${encodeURIComponent(imgObj.description || '')}&pinner=${encodeURIComponent(imgObj.pinner || '')}&color=${encodeURIComponent(imgObj.color || '')}&width=${imgObj.width || ''}&height=${imgObj.height || ''}`}
-              onClick={() => {
-                console.log("Pin Clicked! Info:", imgObj);
-                if (!disableCache) {
-                  // Guarantee the exact scroll position is saved right before Next.js navigation starts!
-                  sessionStorage.setItem(CACHE_KEY, JSON.stringify({
-                    images,
-                    bookmark,
-                    csrfToken,
-                    scrollY: window.scrollY,
-                    query: activeQuery,
-                    mode: activeMode
-                  }));
-                }
-
-                // Update local history cookie for home feed recommendations
-                if (imgObj.id) {
-                  try {
-                    const cookieMatch = document.cookie.match(/(^|;)\s*pinny_history\s*=\s*([^;]+)/);
-                    let history: any[] = [];
-                    if (cookieMatch) {
-                      const parsed = JSON.parse(decodeURIComponent(cookieMatch[2]));
-                      // Migrate old string arrays to object arrays
-                      history = parsed.map((item: any) => typeof item === 'string' ? { id: item, title: '' } : item);
-                    }
-                    
-                    let pinTitle = imgObj.title || '';
-                    if (pinTitle.toLowerCase() === 'untitled') pinTitle = '';
-                    
-                    history = [{ id: imgObj.id, title: pinTitle }, ...history.filter((item: any) => item.id !== imgObj.id)].slice(0, 10);
-                    
-                    console.log('%c[Pinny] History Updated:', 'color: #f59e0b; font-weight: bold;', history);
-                    
-                    document.cookie = `pinny_history=${encodeURIComponent(JSON.stringify(history))}; path=/; max-age=31536000`; // 1 year
-                  } catch(e) {}
-                }
-              }}
+            <div 
               key={`${imgObj.id || imgObj.url}-${index}`} 
-              className="pin-card" 
+              className="pin-card-wrapper"
               style={{  
                 position: 'absolute', 
                 top: `${pos.y}px`, 
@@ -370,17 +335,62 @@ export default function ImageGrid({ initialImages, initialBookmark, initialCsrfT
                 display: 'block',
               }}
             >
-              <img 
-                src={finalUrl} 
-                alt={imgObj.title || `Pin`} 
-                loading={index < 8 ? "eager" : "lazy"}
-                fetchPriority={index < 4 ? "high" : "auto"}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                onError={(e) => {
-                  (e.target as HTMLImageElement).parentElement!.style.display = 'none';
+              <Link 
+                href={`/pin?id=${encodeURIComponent(imgObj.id || '')}&url=${encodeURIComponent(imgObj.url)}&origUrl=${encodeURIComponent(imgObj.origUrl || imgObj.url)}&title=${encodeURIComponent(imgObj.title || '')}&description=${encodeURIComponent(imgObj.description || '')}&pinner=${encodeURIComponent(imgObj.pinner || '')}&color=${encodeURIComponent(imgObj.color || '')}&width=${imgObj.width || ''}&height=${imgObj.height || ''}`}
+                onClick={() => {
+                  console.log("Pin Clicked! Info:", imgObj);
+                  if (!disableCache) {
+                    // Guarantee the exact scroll position is saved right before Next.js navigation starts!
+                    sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+                      images,
+                      bookmark,
+                      csrfToken,
+                      scrollY: window.scrollY,
+                      query: activeQuery,
+                      mode: activeMode
+                    }));
+                  }
+
+                  // Update local history cookie for home feed recommendations
+                  if (imgObj.id) {
+                    try {
+                      const cookieMatch = document.cookie.match(/(^|;)\s*pinny_history\s*=\s*([^;]+)/);
+                      let history: any[] = [];
+                      if (cookieMatch) {
+                        const parsed = JSON.parse(decodeURIComponent(cookieMatch[2]));
+                        // Migrate old string arrays to object arrays
+                        history = parsed.map((item: any) => typeof item === 'string' ? { id: item, title: '' } : item);
+                      }
+                      
+                      let pinTitle = imgObj.title || '';
+                      if (pinTitle.toLowerCase() === 'untitled') pinTitle = '';
+                      
+                      history = [{ id: imgObj.id, title: pinTitle }, ...history.filter((item: any) => item.id !== imgObj.id)].slice(0, 10);
+                      
+                      console.log('%c[Pinny] History Updated:', 'color: #f59e0b; font-weight: bold;', history);
+                      
+                      document.cookie = `pinny_history=${encodeURIComponent(JSON.stringify(history))}; path=/; max-age=31536000`; // 1 year
+                    } catch(e) {}
+                  }
                 }}
-              />
-            </Link>
+                className="pin-card" 
+                style={{ display: 'block', width: '100%', height: '100%' }}
+              >
+                <img 
+                  src={finalUrl} 
+                  alt={imgObj.title || `Pin`} 
+                  loading={index < 8 ? "eager" : "lazy"}
+                  fetchPriority={index < 4 ? "high" : "auto"}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).parentElement!.parentElement!.style.display = 'none';
+                  }}
+                />
+              </Link>
+              <div className="save-btn-overlay" style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 10 }}>
+                <SaveToBoardButton pin={imgObj} compact={true} suggestedBoardId={suggestedBoardId} />
+              </div>
+            </div>
           );
         })}
       </div>
