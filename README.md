@@ -25,6 +25,47 @@ It provides an infinitely scrolling, perfectly virtualized masonry grid, robust 
 - **Storage**: IndexedDB (for Boards) & Session Storage (for caching)
 - **Backend APIs**: Next.js Serverless API Routes (CORS proxying)
 
+## ⚙️ How It Works — Data Pipeline & Fallbacks
+
+Pinny doesn't just hit a single API endpoint and call it a day. It runs a multi-stage data pipeline with automatic failure recovery, designed to always deliver a feed — even when Pinterest actively blocks requests.
+
+```mermaid
+flowchart TD
+    A["🏠 User opens Pinny"] --> B{"Has pin history?"}
+    B -- Yes --> C["Fetch related pins\nfor each history ID\n(staggered, parallel)"]
+    B -- No --> D["Server-side search\nfor default query"]
+    C --> E{"API responded\nwith data?"}
+    E -- Yes --> F["Gather & deduplicate\nresults from all fetches"]
+    E -- "No (shadowban detected)" --> G["⚠️ Fallback:\nParallel search by\npin titles + board name"]
+    G --> F
+    F --> H["Shuffle & blend\ninto unified feed"]
+    H --> I["Cache to sessionStorage\n& render grid"]
+    I --> J{"User navigates\nback?"}
+    J -- "Back button" --> K["Instant restore\nfrom sessionStorage"]
+    J -- "Hard refresh" --> L["Detect reload via\nPerformanceNavigationTiming"]
+    L --> M["Bust cache &\nre-fetch fresh feed"]
+```
+
+### 📡 Primary Source — Related Pins API
+
+When a user has browsing history (stored in the `pinny_history` cookie), the app fires parallel requests to Pinterest's **related pins endpoint** for each saved pin ID. Requests are staggered with random delays (up to 2.5s) to avoid rate-limiting. If a board name is available, an additional search query using the board name is blended in to improve thematic relevance.
+
+### 🛡️ Shadowban Detection
+
+Pinterest aggressively blocks automated access. Pinny detects this in real-time: if any related-pins response returns empty data or a non-200 status, the app immediately flags a shadowban and halts all remaining related-pins fetches. A 15-second timeout acts as a safety net for stalled requests.
+
+### 🔄 Fallback Pipeline
+
+When a shadowban is detected, Pinny seamlessly switches to a **parallel search-based strategy**. It takes the titles of your saved pins (and the current board name, if applicable) and fires concurrent text searches against Pinterest's search API. The user sees no error — just a brief loading state before the feed appears with contextually relevant results.
+
+### 🔀 Feed Blending
+
+Results from multiple sources (related pins, search fallbacks, board-name queries) are gathered into a single pool, then **Fisher-Yates shuffled** to create a natural, non-repetitive feed. Duplicate pin IDs are stripped out before rendering.
+
+### 💾 Caching Strategy
+
+Pinny uses `sessionStorage` to preserve the complete feed state — images, scroll position, bookmarks, and query context. When you hit the browser's **back button**, the feed restores instantly with zero re-fetching. However, if you **hard-refresh** (F5 / pull-to-refresh), the app detects this via the `PerformanceNavigationTiming` API and busts the cache, fetching an entirely fresh feed.
+
 ## 🔒 Privacy & Networking Architecture
 
 Here is a breakdown of exactly how the networking behaves in different deployment scenarios:
