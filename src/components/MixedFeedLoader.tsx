@@ -8,9 +8,11 @@ interface MixedFeedLoaderProps {
   historyIds: string[];
   historyTitles?: string[];
   cacheKeyOverride?: string;
+  loaderType?: 'default' | 'spinner';
+  boardName?: string;
 }
 
-export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOverride }: MixedFeedLoaderProps) {
+export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOverride, loaderType = 'default', boardName }: MixedFeedLoaderProps) {
   const query = historyIds.join(',');
   const cachePrefix = 'pinny_grid';
   const CACHE_KEY = cacheKeyOverride || `${cachePrefix}_${query}`;
@@ -31,31 +33,48 @@ export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOve
 
     // 1. Check cache first to avoid re-fetching on back navigation
     try {
-      const cached = sessionStorage.getItem(CACHE_KEY);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed.images && parsed.images.length > 0) {
-          setImages(parsed.images);
-          setBookmarks(parsed.bookmarks ? parsed.bookmarks.split(',') : []);
-          setCsrfToken(parsed.csrfToken || null);
-          setLoading(false);
-          return;
+      let isHardRefresh = false;
+      if (typeof window !== 'undefined' && window.performance) {
+        const navEntries = window.performance.getEntriesByType('navigation');
+        if (navEntries.length > 0 && (navEntries[0] as PerformanceNavigationTiming).type === 'reload') {
+          isHardRefresh = true;
+        } else if (window.performance.navigation && window.performance.navigation.type === 1) {
+          isHardRefresh = true;
         }
       }
-      
-      // Check fallback cache
+
       let fallbackTitles = historyTitles && historyTitles.length > 0 ? historyTitles.slice(0, 10) : ['aesthetic wallpapers'];
       const fallbackCacheKey = `pinny_fallback_${fallbackTitles.join(',')}`;
-      const fallbackCached = sessionStorage.getItem(fallbackCacheKey);
-      if (fallbackCached) {
-        const parsed = JSON.parse(fallbackCached);
-        if (parsed.images && parsed.images.length > 0) {
-          setImages(parsed.images);
-          setBookmarks(parsed.bookmarks ? parsed.bookmarks.split(',') : []);
-          setCsrfToken(parsed.csrfToken || null);
-          setIsFallbackMode(true);
-          setLoading(false);
-          return;
+
+      if (isHardRefresh) {
+        sessionStorage.removeItem(CACHE_KEY);
+        sessionStorage.removeItem(fallbackCacheKey);
+        console.log("%c[Pinny] Hard refresh detected. Cleared feed caches.", "color: #ff9800;");
+      } else {
+        const cached = sessionStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed.images && parsed.images.length > 0) {
+            setImages(parsed.images);
+            setBookmarks(parsed.bookmarks ? parsed.bookmarks.split(',') : []);
+            setCsrfToken(parsed.csrfToken || null);
+            setLoading(false);
+            return;
+          }
+        }
+        
+        // Check fallback cache
+        const fallbackCached = sessionStorage.getItem(fallbackCacheKey);
+        if (fallbackCached) {
+          const parsed = JSON.parse(fallbackCached);
+          if (parsed.images && parsed.images.length > 0) {
+            setImages(parsed.images);
+            setBookmarks(parsed.bookmarks ? parsed.bookmarks.split(',') : []);
+            setCsrfToken(parsed.csrfToken || null);
+            setIsFallbackMode(true);
+            setLoading(false);
+            return;
+          }
         }
       }
     } catch (e) {}
@@ -96,8 +115,11 @@ export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOve
       completed = 0;
       setProgress(0);
       
-      activeFetches = fallbackTitles.length;
-      fallbackTitles.forEach((title) => {
+      let targets = [...fallbackTitles];
+      if (boardName) targets.unshift(boardName); // Inject board name to fallback search
+      
+      activeFetches = targets.length;
+      targets.forEach((title) => {
         const delay = Math.random() * 2500;
         setTimeout(async () => {
           if (!isMounted || finished) return;
@@ -117,7 +139,7 @@ export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOve
           } finally {
             activeFetches--;
             completed++;
-            setProgress(Math.round((completed / fallbackTitles.length) * 100));
+            setProgress(Math.round((completed / targets.length) * 100));
             if (activeFetches === 0) {
               clearTimeout(timeoutId);
               finalize();
@@ -126,6 +148,33 @@ export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOve
         }, delay);
       });
     };
+
+    activeFetches = historyIds.length + (boardName ? 1 : 0);
+
+    if (boardName) {
+      setTimeout(async () => {
+        if (!isMounted || finished || relatedBlockedDetected) return;
+        try {
+          console.log(`%c[Pinny API] Board context fetch: /api/search?q=${boardName}`, 'color: #9c27b0;');
+          const res = await fetch(`/api/search?q=${encodeURIComponent(boardName)}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.images) gatheredImages.push(...data.images);
+            if (data.csrftoken && !token) token = data.csrftoken;
+          }
+        } catch(e) {} finally {
+          if (!relatedBlockedDetected) {
+            activeFetches--;
+            completed++;
+            // Don't update progress to avoid math issues with historyIds
+            if (activeFetches === 0) {
+              clearTimeout(timeoutId);
+              finalize();
+            }
+          }
+        }
+      }, Math.random() * 2000);
+    }
 
     historyIds.forEach((id) => {
       const delay = Math.random() * 2500; // Stagger up to 2.5 seconds
@@ -182,6 +231,18 @@ export default function MixedFeedLoader({ historyIds, historyTitles, cacheKeyOve
   }, [historyIds, CACHE_KEY]);
 
   if (loading) {
+    if (loaderType === 'spinner') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '4rem 0', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+          <div style={{ width: '40px', height: '40px', border: '3px solid var(--border)', borderTop: '3px solid var(--pinterest-red)', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '1.5rem' }} />
+          <h3 style={{ fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: '0.5rem' }}>Looking for more ideas...</h3>
+          <style dangerouslySetInnerHTML={{__html: `
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+          `}} />
+        </div>
+      );
+    }
+
     return (
       <div style={{
         display: 'flex',

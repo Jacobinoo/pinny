@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import BackButton from '@/components/BackButton';
 import ImageGrid from '@/components/ImageGrid';
+import SearchBar from '@/components/SearchBar';
 import { searchPinterest, getRelatedPins } from '@/lib/pinterest';
 import { ImageObj } from '@/app/page';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -83,6 +84,9 @@ export default async function PinPage({
       {/* Header */}
       <header className="pin-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <BackButton />
+        <div style={{ flex: 1, maxWidth: '600px', margin: '0 2rem' }}>
+          <SearchBar initialQuery="" />
+        </div>
         <ThemeToggle />
       </header>
       
