@@ -19,14 +19,11 @@ export default function BackButton({ fallback = '/' }: { fallback?: string }) {
       onClick={handleBack}
       className="back-btn"
       style={{
-        background: 'none',
         border: 'none',
         color: 'inherit',
         font: 'inherit',
         cursor: 'pointer',
-        padding: 0,
-        textDecoration: 'none',
-        display: 'inline-block'
+        textDecoration: 'none'
       }}
     >
       &larr; Back
