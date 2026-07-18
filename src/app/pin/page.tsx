@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import BackButton from '@/components/BackButton';
 import ImageGrid from '@/components/ImageGrid';
 import { searchPinterest, getRelatedPins } from '@/lib/pinterest';
 import { ImageObj } from '@/app/page';
@@ -16,7 +17,7 @@ export default async function PinPage({
     return (
       <div className="pin-page-container">
         <header className="pin-header">
-          <Link href="/" className="back-btn">&larr; Back to Home</Link>
+          <BackButton />
         </header>
         <div style={{ padding: '4rem', textAlign: 'center' }}>Invalid Pin Data</div>
       </div>
@@ -81,9 +82,7 @@ export default async function PinPage({
     <div className="pin-page-container">
       {/* Header */}
       <header className="pin-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Link href="/" className="back-btn">
-           &larr; Back
-        </Link>
+        <BackButton />
         <ThemeToggle />
       </header>
       

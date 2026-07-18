@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import ThemeToggle, { applyTheme } from '@/components/ThemeToggle';
+import BackButton from '@/components/BackButton';
 
 export default function SettingsPage() {
   const [history, setHistory] = useState<{title: string, id: string}[]>([]);
@@ -55,7 +56,7 @@ export default function SettingsPage() {
   return (
     <div className="pin-page-container">
       <header className="pin-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Link href="/" className="back-btn">&larr; Back</Link>
+        <BackButton />
         <ThemeToggle />
       </header>
       

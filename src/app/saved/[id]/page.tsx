@@ -3,8 +3,8 @@ import { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { Board, getBoard } from '@/lib/db';
 import ImageGrid from '@/components/ImageGrid';
-
 import ThemeToggle from '@/components/ThemeToggle';
+import BackButton from '@/components/BackButton';
 
 export default function BoardPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -33,14 +33,10 @@ export default function BoardPage({ params }: { params: Promise<{ id: string }> 
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: 'var(--bg)', color: 'var(--text-primary)' }}>
-      <header className="header" style={{ justifyContent: 'space-between' }}>
-        <Link href="/saved" className="back-btn" style={{ textDecoration: 'none' }}>
-           &larr; Boards
-        </Link>
+      <header className="pin-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <BackButton fallback="/saved" />
         <div style={{ fontWeight: 600, fontSize: '1.2rem' }}>{board.name}</div>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <ThemeToggle />
-        </div>
+        <ThemeToggle />
       </header>
       
       <main className="main-content">
