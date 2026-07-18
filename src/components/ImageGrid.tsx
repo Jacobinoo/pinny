@@ -373,7 +373,8 @@ export default function ImageGrid({ initialImages, initialBookmark, initialCsrfT
               <img 
                 src={finalUrl} 
                 alt={imgObj.title || `Pin`} 
-                loading="lazy"
+                loading={index < 8 ? "eager" : "lazy"}
+                fetchPriority={index < 4 ? "high" : "auto"}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 onError={(e) => {
                   (e.target as HTMLImageElement).parentElement!.style.display = 'none';

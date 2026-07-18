@@ -94,6 +94,8 @@ export default async function PinPage({
               src={finalOrigUrl} 
               alt={title || "Pin Image"} 
               className="pin-full-image" 
+              loading="eager"
+              fetchPriority="high"
             />
           </div>
           
