@@ -54,9 +54,13 @@ export async function searchPinterest(query: string, bookmark?: string | null, c
     const fetchOptions: RequestInit = {
       method: bookmark ? 'POST' : 'GET',
       headers: headers,
-      cache: 'no-store',
-      dispatcher: getProxyDispatcher()
-    } as RequestInit;
+      cache: 'no-store'
+    };
+    
+    const dispatcher = getProxyDispatcher();
+    if (dispatcher) {
+      (fetchOptions as any).dispatcher = dispatcher;
+    }
 
     if (bookmark) {
       fetchOptions.body = `data=${dataParam}`;
@@ -154,9 +158,13 @@ export async function getRelatedPins(pinId: string, bookmark?: string | null, cs
     const fetchOptions: RequestInit = {
       method: bookmark ? 'POST' : 'GET',
       headers: headers,
-      cache: 'no-store',
-      dispatcher: getProxyDispatcher()
-    } as RequestInit;
+      cache: 'no-store'
+    };
+    
+    const dispatcher = getProxyDispatcher();
+    if (dispatcher) {
+      (fetchOptions as any).dispatcher = dispatcher;
+    }
 
     if (bookmark) {
       fetchOptions.body = `data=${dataParam}`;
