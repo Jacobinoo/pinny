@@ -1,3 +1,14 @@
+import { ProxyAgent } from 'undici';
+import { cachedFetch } from './cache';
+
+// Helper to get an optional proxy dispatcher for fetch
+function getProxyDispatcher() {
+  const urls = process.env.PROXY_POOL_URLS?.split(',').filter(Boolean);
+  if (!urls?.length) return undefined;
+  const selected = urls[Math.floor(Math.random() * urls.length)];
+  return new ProxyAgent(selected);
+}
+
 export async function searchPinterest(query: string, bookmark?: string | null, csrftoken?: string | null) {
   const url = "https://www.pinterest.com/resource/BaseSearchResource/get/";
 
@@ -35,58 +46,63 @@ export async function searchPinterest(query: string, bookmark?: string | null, c
     headers["cookie"] = cookieStr;
   }
 
-  const fetchUrl = bookmark ? url : `${url}?data=${dataParam}`;
+  const cacheKey = `pinny:search:${query.replace(/[^a-zA-Z0-9]/g, '_')}:${bookmark ? bookmark.substring(0, 10) : 'null'}`;
 
-  const fetchOptions: RequestInit = {
-    method: bookmark ? 'POST' : 'GET',
-    headers: headers,
-    cache: 'no-store'
-  };
+  return cachedFetch(cacheKey, async () => {
+    const fetchUrl = bookmark ? url : `${url}?data=${dataParam}`;
 
-  if (bookmark) {
-    fetchOptions.body = `data=${dataParam}`;
-    headers["Content-Type"] = "application/x-www-form-urlencoded";
-  }
+    const fetchOptions: RequestInit = {
+      method: bookmark ? 'POST' : 'GET',
+      headers: headers,
+      cache: 'no-store',
+      dispatcher: getProxyDispatcher()
+    } as RequestInit;
 
-  try {
-    const res = await fetch(fetchUrl, fetchOptions);
-
-    if (!res.ok) {
-      console.error(`Pinterest Search API returned HTTP ${res.status}: ${res.statusText}`);
+    if (bookmark) {
+      fetchOptions.body = `data=${dataParam}`;
+      headers["Content-Type"] = "application/x-www-form-urlencoded";
     }
 
-    const textData = await res.text();
-    let data;
     try {
-      data = JSON.parse(textData);
-      console.error("DEBUG SEARCH JSON RESPONSE:", JSON.stringify(data, null, 2));
-    } catch (e) {
-      console.error("Pinterest Search API returned non-JSON response:", textData.substring(0, 200) + "...");
-      throw new Error("Invalid JSON from Pinterest");
-    }
+      const res = await fetch(fetchUrl, fetchOptions);
 
-    const setCookie = res.headers.get('set-cookie');
-    let newCsrfToken = csrftoken;
-    if (setCookie) {
-      const match = (setCookie as string).match(/csrftoken=([^;]+)/i);
-      const token = match?.[1];
-      if (token) {
-        newCsrfToken = token;
+      if (!res.ok) {
+        console.error(`Pinterest Search API returned HTTP ${res.status}: ${res.statusText}`);
       }
+
+      const textData = await res.text();
+      let data;
+      try {
+        data = JSON.parse(textData);
+        // console.error("DEBUG SEARCH JSON RESPONSE:", JSON.stringify(data, null, 2));
+      } catch (e) {
+        console.error("Pinterest Search API returned non-JSON response:", textData.substring(0, 200) + "...");
+        throw new Error("Invalid JSON from Pinterest");
+      }
+
+      const setCookie = res.headers.get('set-cookie');
+      let newCsrfToken = csrftoken;
+      if (setCookie) {
+        const match = (setCookie as string).match(/csrftoken=([^;]+)/i);
+        const token = match?.[1];
+        if (token) {
+          newCsrfToken = token;
+        }
+      }
+
+      const { images, bookmark: nextBookmark } = parsePinterestResponse(data);
+
+      return {
+        images,
+        bookmark: nextBookmark || null,
+        csrftoken: newCsrfToken
+      };
+
+    } catch (error: any) {
+      console.error("Pinterest API Fetch Error:", error);
+      throw error;
     }
-
-    const { images, bookmark: nextBookmark } = parsePinterestResponse(data);
-
-    return {
-      images,
-      bookmark: nextBookmark || null,
-      csrftoken: newCsrfToken
-    };
-
-  } catch (error: any) {
-    console.error("Pinterest API Fetch Error:", error);
-    throw error;
-  }
+  }, 3600); // 1 hour TTL
 }
 
 export async function getRelatedPins(pinId: string, bookmark?: string | null, csrftoken?: string | null) {
@@ -130,58 +146,63 @@ export async function getRelatedPins(pinId: string, bookmark?: string | null, cs
     headers["cookie"] = cookieStr;
   }
 
-  const fetchUrl = bookmark ? url : `${url}?data=${dataParam}`;
+  const cacheKey = `pinny:related:${pinId}:${bookmark ? bookmark.substring(0, 10) : 'null'}`;
 
-  const fetchOptions: RequestInit = {
-    method: bookmark ? 'POST' : 'GET',
-    headers: headers,
-    cache: 'no-store'
-  };
+  return cachedFetch(cacheKey, async () => {
+    const fetchUrl = bookmark ? url : `${url}?data=${dataParam}`;
 
-  if (bookmark) {
-    fetchOptions.body = `data=${dataParam}`;
-    headers["Content-Type"] = "application/x-www-form-urlencoded";
-  }
+    const fetchOptions: RequestInit = {
+      method: bookmark ? 'POST' : 'GET',
+      headers: headers,
+      cache: 'no-store',
+      dispatcher: getProxyDispatcher()
+    } as RequestInit;
 
-  try {
-    const res = await fetch(fetchUrl, fetchOptions);
-
-    if (!res.ok) {
-      console.error(`Pinterest Related API returned HTTP ${res.status}: ${res.statusText}`);
+    if (bookmark) {
+      fetchOptions.body = `data=${dataParam}`;
+      headers["Content-Type"] = "application/x-www-form-urlencoded";
     }
 
-    const textData = await res.text();
-    let data;
     try {
-      data = JSON.parse(textData);
-      console.error("DEBUG RELATED JSON RESPONSE:", JSON.stringify(data, null, 2));
-    } catch (e) {
-      console.error("Pinterest Related API returned non-JSON response:", textData.substring(0, 200) + "...");
-      throw new Error("Invalid JSON from Pinterest");
-    }
+      const res = await fetch(fetchUrl, fetchOptions);
 
-    const setCookie = res.headers.get('set-cookie');
-    let newCsrfToken = csrftoken;
-    if (setCookie) {
-      const match = (setCookie as string).match(/csrftoken=([^;]+)/i);
-      const token = match?.[1];
-      if (token) {
-        newCsrfToken = token;
+      if (!res.ok) {
+        console.error(`Pinterest Related API returned HTTP ${res.status}: ${res.statusText}`);
       }
+
+      const textData = await res.text();
+      let data;
+      try {
+        data = JSON.parse(textData);
+        // console.error("DEBUG RELATED JSON RESPONSE:", JSON.stringify(data, null, 2));
+      } catch (e) {
+        console.error("Pinterest Related API returned non-JSON response:", textData.substring(0, 200) + "...");
+        throw new Error("Invalid JSON from Pinterest");
+      }
+
+      const setCookie = res.headers.get('set-cookie');
+      let newCsrfToken = csrftoken;
+      if (setCookie) {
+        const match = (setCookie as string).match(/csrftoken=([^;]+)/i);
+        const token = match?.[1];
+        if (token) {
+          newCsrfToken = token;
+        }
+      }
+
+      const { images, bookmark: nextBookmark } = parsePinterestResponse(data);
+
+      return {
+        images,
+        bookmark: nextBookmark || null,
+        csrftoken: newCsrfToken
+      };
+
+    } catch (error: any) {
+      console.error("Pinterest API Related Pins Error:", error);
+      throw error;
     }
-
-    const { images, bookmark: nextBookmark } = parsePinterestResponse(data);
-
-    return {
-      images,
-      bookmark: nextBookmark || null,
-      csrftoken: newCsrfToken
-    };
-
-  } catch (error: any) {
-    console.error("Pinterest API Related Pins Error:", error);
-    throw error;
-  }
+  }, 3600); // 1 hour TTL
 }
 
 function parsePinterestResponse(data: any): { images: any[], bookmark?: string } {

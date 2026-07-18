@@ -66,6 +66,32 @@ Results from multiple sources (related pins, search fallbacks, board-name querie
 
 Pinny uses `sessionStorage` to preserve the complete feed state — images, scroll position, bookmarks, and query context. When you hit the browser's **back button**, the feed restores instantly with zero re-fetching. However, if you **hard-refresh** (F5 / pull-to-refresh), the app detects this via the `PerformanceNavigationTiming` API and busts the cache, fetching an entirely fresh feed.
 
+## 🚀 Scaling & Architecture
+
+Pinny's architecture is a mixed bag when it comes to scaling to hundreds of concurrent users.
+
+### ✅ What Scales Well
+* **Compute is client-side**: The heavy work — parallel fetching, shuffling, deduplication, and blending — all happens in the user's browser via `MixedFeedLoader`. Your server doesn't do any of that. 100 users = 100 independent browsers doing their own computation. Zero server CPU pressure from the feed logic itself.
+* **Serverless functions scale horizontally**: Vercel spins up as many Lambda instances as needed. You'll never hit a "max connections" wall on your own infra.
+* **Aggressive client caching**: `sessionStorage` caching means back-navigation generates zero server requests. Users only hit your API on first load or hard refresh.
+
+### ❌ The Real Bottleneck
+The ceiling is Pinterest's IP-based rate limiting. Every user's refined feed fires ~10–12 parallel requests through your API routes to Pinterest. With 100 concurrent users, that's ~1,000+ requests hitting Pinterest from the same egress IP range within seconds. Pinterest doesn't care that these are different users — they see one IP hammering their API. The result is a mass shadowban across your entire deployment IP.
+
+### 🛠️ Scalability Mitigations Implemented
+To mitigate this upstream rate limiting, Pinny includes several enterprise-grade scalability features:
+
+1. **Server-Side Response Caching (Upstash Redis)**
+   All Pinterest API responses are cached in Redis for 1 hour. If 10 users request related pins for the same popular pin ID, Pinny only hits Pinterest once.
+   *Configure via:* `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+
+2. **API Route Rate Limiting (Upstash Ratelimit)**
+   A sliding-window rate limiter runs at the edge via `src/middleware.ts`. Standard endpoints are limited to 60 req/min. The "fan-out" endpoints (`/api/mixed`) have a stricter limit of 20 req/min per IP to prevent single users from burning through the upstream quota.
+
+3. **Rotating Proxy Pool Integration**
+   Pinny has built-in support for distributing upstream requests across multiple proxy IPs (e.g., Bright Data, proxy mesh).
+   *Configure via:* `PROXY_POOL_URLS=http://user:pass@proxy1:8080,http://user:pass@proxy2:8080`
+
 ## 🔒 Privacy & Networking Architecture
 
 Here is a breakdown of exactly how the networking behaves in different deployment scenarios:
