@@ -68,29 +68,29 @@ Pinny uses `sessionStorage` to preserve the complete feed state — images, scro
 
 ## 🚀 Scaling & Architecture
 
-Pinny's architecture is a mixed bag when it comes to scaling to hundreds of concurrent users.
+Pinny is designed to scale horizontally, but upstream rate limits dictate specific architectural decisions.
 
-### ✅ What Scales Well
-* **Compute is client-side**: The heavy work — parallel fetching, shuffling, deduplication, and blending — all happens in the user's browser via `MixedFeedLoader`. Your server doesn't do any of that. 100 users = 100 independent browsers doing their own computation. Zero server CPU pressure from the feed logic itself.
-* **Serverless functions scale horizontally**: Vercel spins up as many Lambda instances as needed. You'll never hit a "max connections" wall on your own infra.
-* **Aggressive client caching**: `sessionStorage` caching means back-navigation generates zero server requests. Users only hit your API on first load or hard refresh.
+### Client-Side Compute
+Feed generation (parallel fetching, shuffling, deduplication, and blending) is offloaded entirely to the client's browser via `MixedFeedLoader`. This eliminates server-side CPU bottlenecks associated with array manipulation and ensures `O(1)` backend complexity per active session.
 
-### ❌ The Real Bottleneck
-The ceiling is Pinterest's IP-based rate limiting. Every user's refined feed fires ~10–12 parallel requests through your API routes to Pinterest. With 100 concurrent users, that's ~1,000+ requests hitting Pinterest from the same egress IP range within seconds. Pinterest doesn't care that these are different users — they see one IP hammering their API. The result is a mass shadowban across your entire deployment IP.
+### Serverless & Cache Persistence
+Vercel serverless functions handle API proxying, scaling automatically with traffic. Back-navigation leverages `sessionStorage` to instantly restore the DOM and feed state, reducing server load by bypassing upstream API requests entirely during normal session browsing.
 
-### 🛠️ Scalability Mitigations Implemented
-To mitigate this upstream rate limiting, Pinny includes several enterprise-grade scalability features:
+### Upstream Rate Limit Mitigations
+The primary bottleneck for concurrent users is Pinterest's IP-based rate limiting. When multiple users hit the Vercel API routes concurrently, all requests egress from the same datacenter IP range, which can trigger a mass shadowban. 
 
-1. **Server-Side Response Caching (Upstash Redis)**
-   All Pinterest API responses are cached in Redis for 1 hour. If 10 users request related pins for the same popular pin ID, Pinny only hits Pinterest once.
-   *Configure via:* `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN`
+To mitigate upstream throttling, Pinny implements the following server-side strategies:
 
-2. **API Route Rate Limiting (Upstash Ratelimit)**
-   A sliding-window rate limiter runs at the edge via `src/middleware.ts`. Standard endpoints are limited to 60 req/min. The "fan-out" endpoints (`/api/mixed`) have a stricter limit of 20 req/min per IP to prevent single users from burning through the upstream quota.
+1. **Response Caching (Redis)**  
+   Pinterest API responses are cached globally for 1 hour. Concurrent requests for the same pin ID or search query are served from cache rather than upstream.  
+   *Environment:* `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
 
-3. **Rotating Proxy Pool Integration**
-   Pinny has built-in support for distributing upstream requests across multiple proxy IPs (e.g., Bright Data, proxy mesh).
-   *Configure via:* `PROXY_POOL_URLS=http://user:pass@proxy1:8080,http://user:pass@proxy2:8080`
+2. **Edge Rate Limiting**  
+   A sliding-window rate limiter restricts inbound traffic per IP. Standard routes allow 60 requests per minute, while fan-out endpoints (`/api/mixed`) are restricted to 20 requests per minute to prevent quota exhaustion.
+
+3. **Proxy Pool Rotation**  
+   Upstream requests can be routed through an external proxy pool (e.g., Bright Data). The internal dispatcher assigns a random proxy per request to distribute the egress IP footprint.  
+   *Environment:* `PROXY_POOL_URLS=http://user:pass@proxy1:8080,http://user:pass@proxy2:8080`
 
 ## 🔒 Privacy & Networking Architecture
 
