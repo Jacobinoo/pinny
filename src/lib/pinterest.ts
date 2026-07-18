@@ -1,4 +1,4 @@
-import { ProxyAgent } from 'undici';
+import { ProxyAgent, fetch as undiciFetch } from 'undici';
 import { cachedFetch } from './cache';
 
 // Helper to get an optional proxy dispatcher for fetch
@@ -7,6 +7,16 @@ function getProxyDispatcher() {
   if (!urls?.length) return undefined;
   const selected = urls[Math.floor(Math.random() * urls.length)];
   return new ProxyAgent(selected);
+}
+
+// Wrapper to use the right fetch implementation
+async function doFetch(url: string, options: any) {
+  const dispatcher = getProxyDispatcher();
+  if (dispatcher) {
+    options.dispatcher = dispatcher;
+    return undiciFetch(url, options);
+  }
+  return fetch(url, options);
 }
 
 export async function searchPinterest(query: string, bookmark?: string | null, csrftoken?: string | null) {
@@ -56,11 +66,6 @@ export async function searchPinterest(query: string, bookmark?: string | null, c
       headers: headers,
       cache: 'no-store'
     };
-    
-    const dispatcher = getProxyDispatcher();
-    if (dispatcher) {
-      (fetchOptions as any).dispatcher = dispatcher;
-    }
 
     if (bookmark) {
       fetchOptions.body = `data=${dataParam}`;
@@ -68,7 +73,7 @@ export async function searchPinterest(query: string, bookmark?: string | null, c
     }
 
     try {
-      const res = await fetch(fetchUrl, fetchOptions);
+      const res = await doFetch(fetchUrl, fetchOptions);
 
       if (!res.ok) {
         console.error(`Pinterest Search API returned HTTP ${res.status}: ${res.statusText}`);
@@ -160,11 +165,6 @@ export async function getRelatedPins(pinId: string, bookmark?: string | null, cs
       headers: headers,
       cache: 'no-store'
     };
-    
-    const dispatcher = getProxyDispatcher();
-    if (dispatcher) {
-      (fetchOptions as any).dispatcher = dispatcher;
-    }
 
     if (bookmark) {
       fetchOptions.body = `data=${dataParam}`;
@@ -172,7 +172,7 @@ export async function getRelatedPins(pinId: string, bookmark?: string | null, cs
     }
 
     try {
-      const res = await fetch(fetchUrl, fetchOptions);
+      const res = await doFetch(fetchUrl, fetchOptions);
 
       if (!res.ok) {
         console.error(`Pinterest Related API returned HTTP ${res.status}: ${res.statusText}`);
