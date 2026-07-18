@@ -37,7 +37,9 @@ export async function middleware(request: NextRequest) {
       return NextResponse.next();
     }
 
-    const ip = request.ip || '127.0.0.1';
+    // In newer Next.js versions, request.ip is deprecated/removed from types.
+    // Fall back to standard headers.
+    const ip = request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? '127.0.0.1';
     
     let limitResult;
     if (path.startsWith('/api/mixed')) {
